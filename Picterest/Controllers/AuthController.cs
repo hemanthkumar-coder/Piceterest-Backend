@@ -177,10 +177,12 @@ namespace Picterest.Controllers
                         HttpOnly = true,
                         Secure = false, // false only for local HTTP testing
                         SameSite = SameSiteMode.Lax,
-                        Expires = DateTimeOffset.UtcNow.AddMinutes(ExpirationTime)
+                        Expires = DateTimeOffset.UtcNow.AddMinutes(ExpirationTime),
+                        Path="/"
                     });
 
-            return Redirect("http://192.168.0.174:5173");
+            var homePageUrl = _configuration["HomePageUrl"] ?? throw new InvalidOperationException("HomePage Url is not Configured");
+            return Redirect(homePageUrl);
 
 
 
@@ -202,6 +204,25 @@ namespace Picterest.Controllers
                 Success = true,
                 Message = "Fetched User Details",
                 userDetails
+            });
+        }
+
+        [Authorize]
+        [HttpGet("logout")]
+        public async Task<IActionResult> logout()
+        {
+            Response.Cookies.Delete("access_token", new CookieOptions
+            {
+                Secure = true,
+                SameSite = SameSiteMode.None,
+                Path = "/"
+            });
+
+            return new JsonResult(new
+            {
+                Success = true,
+                Message = "Logout Successful",
+                StatusCode = 200
             });
         }
     }

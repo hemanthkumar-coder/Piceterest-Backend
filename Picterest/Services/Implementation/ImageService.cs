@@ -24,11 +24,22 @@ namespace Picterest.Services.Implementation
             _configuration = configuration;
         }
 
-        public async Task<ServiceResult> GetAllImages()
+        public async Task<ServiceResult> GetAllImages(string userId)
         {
             try
             {
-                var images = _unitOfWork.Images.GetAllImages();
+
+                if (!Guid.TryParse(userId, out var UID))
+                {
+                    return new ServiceResult
+                    {
+                        IsSuccess = false,
+                        Error = "Please Login to Access Images",
+                        StatusCode = 401
+                    };
+                }
+
+                var images = _unitOfWork.Images.GetAllImages(UID);
                 if (images == null)
                 {
                     _logger.LogError("Images are null for Get All Images");
@@ -224,7 +235,7 @@ namespace Picterest.Services.Implementation
 
         }
 
-        public async Task<ServiceResult> GetImageMetaData(string id)
+        public async Task<ServiceResult> GetImageMetaData(string id, string userId)
         {
             if(string.IsNullOrWhiteSpace(id))
             {
@@ -238,17 +249,27 @@ namespace Picterest.Services.Implementation
 
             try
             {
-                var isValidGuid = Guid.TryParse(id, out var imageId);
-                if (!isValidGuid)
+                
+                if (!Guid.TryParse(id, out var imageId))
                 {
                     return new ServiceResult
                     {
                         IsSuccess = false,
-                        Error = "Given Image Id is not a valid Guid"
+                        Error = "Given Image Id is not a valid Guid",
+                        StatusCode = 400
+                    };
+                }
+                if (!Guid.TryParse(userId, out var UID))
+                {
+                    return new ServiceResult
+                    {
+                        IsSuccess = false,
+                        Error = "You dont have access to this resource",
+                        StatusCode = 401
                     };
                 }
 
-                var image = await _unitOfWork.Images.GetByPkAsync(imageId);
+                var image = await _unitOfWork.Images.GetImageFileByImageIdAndUserId(imageId, UID);
 
                 if (image == null)
                 {
@@ -303,7 +324,7 @@ namespace Picterest.Services.Implementation
 
         }
 
-        public async Task<ServiceResult> SoftDelete(string id)
+        public async Task<ServiceResult> SoftDelete(string id,string userId)
         {
             if (string.IsNullOrEmpty(id))
             {
@@ -316,8 +337,17 @@ namespace Picterest.Services.Implementation
             }
             try
             {
-                var IsValidGuid = Guid.TryParse(id, out var ImageId);
-                if (!IsValidGuid)
+                
+                if (!Guid.TryParse(id, out var ImageId))
+                {
+                    return new ServiceResult
+                    {
+                        IsSuccess = false,
+                        Error = "please provide valid Id",
+                        StatusCode = 400
+                    };
+                }
+                if (!Guid.TryParse(userId, out var UID))
                 {
                     return new ServiceResult
                     {
@@ -327,7 +357,7 @@ namespace Picterest.Services.Implementation
                     };
                 }
 
-                var image = await _unitOfWork.Images.GetByPkAsync(ImageId);
+                var image = await _unitOfWork.Images.GetImageFileByImageIdAndUserId(ImageId,UID);
 
                 if (image == null)
                 {
@@ -374,10 +404,10 @@ namespace Picterest.Services.Implementation
             }
         }
 
-        public async Task<ServiceResult> UpdateImage(ImageUpdateDTO dto)
+        public async Task<ServiceResult> UpdateImage(ImageUpdateDTO dto,string userId)
         {
-            var IsValidGuid = Guid.TryParse(dto.ImageId, out var ImageId);
-            if (!IsValidGuid)
+            
+            if (!Guid.TryParse(dto.ImageId, out var ImageId))
             {
                 return new ServiceResult
                 {
@@ -386,8 +416,17 @@ namespace Picterest.Services.Implementation
                     StatusCode = 400
                 };
             }
+            if (!Guid.TryParse(userId, out var UID))
+            {
+                return new ServiceResult
+                {
+                    IsSuccess = false,
+                    Error = "You Dont Have Access to Update Image",
+                    StatusCode = 401
+                };
+            }
             //Check Whether Image with GivenId is present or not
-            var image = await _unitOfWork.Images.GetByPkAsync(ImageId);
+            var image = await _unitOfWork.Images.GetImageFileByImageIdAndUserId(ImageId, UID);
             if(image == null)
             {
                 return new ServiceResult
@@ -530,7 +569,7 @@ namespace Picterest.Services.Implementation
             
         }
 
-        public async Task<ServiceResult> UploadImage(ImageUploadDTO dto)
+        public async Task<ServiceResult> UploadImage(ImageUploadDTO dto,string userId)
         {
             if(dto == null)
             {
@@ -541,6 +580,18 @@ namespace Picterest.Services.Implementation
                     Error = "Upload DTO is null"
                 };
             }
+
+            if (!Guid.TryParse(userId, out Guid UploadedById))
+            {
+                _logger.LogError("Cannot Parse User Id {id}", userId);
+                return new ServiceResult
+                {
+                    IsSuccess = false,
+                    Error = "Invalid User ID",
+                    StatusCode = 400
+                };
+            }
+
             var FileName = dto.Name !=null ? dto.Name : Path.GetFileNameWithoutExtension(dto.File.FileName);
 
             FileUploadResult? fileUploadResult = null;
@@ -554,7 +605,8 @@ namespace Picterest.Services.Implementation
                     return new ServiceResult
                     {
                         IsSuccess = false,
-                        Error = "Error Uploading Image"
+                        Error = fileStorageServiceResult.Error,
+                        StatusCode = fileStorageServiceResult.StatusCode
                     };
                 }
 
@@ -577,7 +629,8 @@ namespace Picterest.Services.Implementation
                     Id = Guid.NewGuid(),
                     Name = FileName,
                     Description = dto.Description,
-                    FileId = fileToStore.Id
+                    FileId = fileToStore.Id,
+                    UserId = UploadedById
                 };
 
                 await _unitOfWork.Images.AddAsync(ImageToStore);
@@ -664,11 +717,21 @@ namespace Picterest.Services.Implementation
                 : $"{publicApiBaseUrl}{imagePath}{imageId}";
         }
 
-        public async Task<ServiceResult> GetRestorableImagesList()
+        public async Task<ServiceResult> GetRestorableImagesList(string userId)
         {
             try
             {
-                var restorableImages = _unitOfWork.Images.GetRestorableImagesList();
+                if (!Guid.TryParse(userId, out var UID))
+                {
+                    return new ServiceResult
+                    {
+                        IsSuccess = false,
+                        Error = "You Dont Access to this Resource",
+                        StatusCode = 401
+                    };
+                }
+
+                var restorableImages = _unitOfWork.Images.GetRestorableImagesList(UID);
 
                 if(restorableImages == null)
                 {
@@ -744,9 +807,10 @@ namespace Picterest.Services.Implementation
             }
 
 
+
             try
             {
-                var restorableImage = _unitOfWork.Images.GetRestorableImage(Guid.Parse(id));
+                var restorableImage = _unitOfWork.Images.GetRestorableImage(imageId);
 
                 if (restorableImage == null)
                 {
@@ -818,7 +882,7 @@ namespace Picterest.Services.Implementation
             }
         }
 
-        public async Task<ServiceResult> RestoreImages(List<string> imageIds)
+        public async Task<ServiceResult> RestoreImages(List<string> imageIds,string userId)
         {
             if(imageIds == null || imageIds.Count == 0)
             {
@@ -832,6 +896,16 @@ namespace Picterest.Services.Implementation
 
             try
             {
+                if (!Guid.TryParse(userId, out Guid UID))
+                {
+                    return new ServiceResult
+                    {
+                        IsSuccess = false,
+                        Error = "You dont have access to this operation",
+                        StatusCode = 400
+                    };
+                }
+
                 List<Guid> validImageIds = new List<Guid>();
                 imageIds.ForEach(id =>
                 {
@@ -846,8 +920,9 @@ namespace Picterest.Services.Implementation
                     }
                 });
                 await _unitOfWork.BeginTransactionAsync();
+                
 
-                await _unitOfWork.Images.RestoreImages(validImageIds);
+                await _unitOfWork.Images.RestoreImages(validImageIds,UID);
 
                 await _unitOfWork.CommitTransactionAsync();
 

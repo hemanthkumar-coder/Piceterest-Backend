@@ -5,15 +5,15 @@ namespace Picterest.Services.Interface
 {
     public interface IImageService
     {
-        Task<ServiceResult> UploadImage(ImageUploadDTO dto);
+        Task<ServiceResult> UploadImage(ImageUploadDTO dto,string userId);
         Task<ServiceResult> GetImageFile(string id);
-        Task<ServiceResult> GetImageMetaData(string id);
-        Task<ServiceResult> SoftDelete(string id);
-        Task<ServiceResult> GetAllImages();
-        Task<ServiceResult> UpdateImage(ImageUpdateDTO dto);
+        Task<ServiceResult> GetImageMetaData(string id,string userId);
+        Task<ServiceResult> SoftDelete(string id,string userId);
+        Task<ServiceResult> GetAllImages(string userId);
+        Task<ServiceResult> UpdateImage(ImageUpdateDTO dto,string userId);
         Task<ServiceResult> GetDeletedImagesDetails();
-        Task<ServiceResult> GetRestorableImagesList();
+        Task<ServiceResult> GetRestorableImagesList(string userId);
         Task<ServiceResult> GetRestorableImageFile(string id);
-        Task<ServiceResult> RestoreImages(List<string> imageIds);
+        Task<ServiceResult> RestoreImages(List<string> imageIds,string userId);
     }   
 }

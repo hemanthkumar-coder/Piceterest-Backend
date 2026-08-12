@@ -30,6 +30,10 @@ namespace Picterest.Context
                       .WithOne(i=>i.Image)
                       .HasForeignKey<Image>(i=>i.FileId)
                       .OnDelete(DeleteBehavior.Cascade);
+                entity.HasOne(i => i.User)
+                      .WithMany(u => u.Images)
+                      .HasForeignKey(i => i.UserId)
+                      .OnDelete(DeleteBehavior.Cascade);
             });
 
             //File Entity Configuration

@@ -12,6 +12,8 @@
         public DateTime DeletedAt { get; set; }
         public Guid FileId {  get; set; }
         public File Files { get; set; } = null!;
+        public Guid UserId { get; set; }
+        public User User { get; set; } = null!;
     }
 
     

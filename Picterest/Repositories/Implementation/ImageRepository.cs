@@ -28,9 +28,9 @@ namespace Picterest.Repositories.Implementation
             return await _context.Images.Include(i=>i.Files).FirstOrDefaultAsync(i => i.Id == id && !i.IsDeleted);
         }
 
-        public IEnumerable<Image>? GetAllImages()
+        public IEnumerable<Image>? GetAllImages(Guid userId)
         {
-            return _context.Images.Where(i => !i.IsDeleted).Include(i => i.Files).AsNoTracking().ToList();
+            return _context.Images.Where(i => !i.IsDeleted && i.UserId == userId).Include(i => i.Files).AsNoTracking().ToList();
         }
 
         public IEnumerable<Image>? GetDeletedImagesDetails()
@@ -52,9 +52,9 @@ namespace Picterest.Repositories.Implementation
                     ).ToList();
         }
 
-        public IEnumerable<Image>? GetRestorableImagesList()
+        public IEnumerable<Image>? GetRestorableImagesList(Guid userId)
         {
-            return _context.Images.Where(i => i.IsDeleted && i.Files.cleanupStatus == Enums.CleanupStatus.PendingStorageDeletion).Include(i => i.Files).AsNoTracking().ToList() ?? new List<Image>();
+            return _context.Images.Where(i => i.IsDeleted && i.Files.cleanupStatus == Enums.CleanupStatus.PendingStorageDeletion && i.UserId == userId).Include(i => i.Files).AsNoTracking().ToList() ?? new List<Image>();
         }
 
         public Image? GetRestorableImage(Guid id)
@@ -62,10 +62,10 @@ namespace Picterest.Repositories.Implementation
             return _context.Images.Include(i=>i.Files).FirstOrDefault(i => i.Id == id && i.IsDeleted && i.Files.cleanupStatus == Enums.CleanupStatus.PendingStorageDeletion);
         }
 
-        public async Task RestoreImages(IEnumerable<Guid> imageIds)
+        public async Task RestoreImages(IEnumerable<Guid> imageIds,Guid userId)
         {
             var restorableImages = await _context.Images.Include(i => i.Files)
-                .Where(i => imageIds.Contains(i.Id) && i.IsDeleted && i.Files.cleanupStatus == Enums.CleanupStatus.PendingStorageDeletion)
+                .Where(i => imageIds.Contains(i.Id) && i.IsDeleted && i.Files.cleanupStatus == Enums.CleanupStatus.PendingStorageDeletion && i.UserId == userId)
                 .ToListAsync();
 
             foreach (var image in restorableImages)
@@ -77,6 +77,11 @@ namespace Picterest.Repositories.Implementation
 
             await _context.SaveChangesAsync();
 
+        }
+
+        public Task<Image?> GetImageFileByImageIdAndUserId(Guid id, Guid userId)
+        {
+            return _context.Images.Include(i => i.Files).FirstOrDefaultAsync(i => i.Id == id && !i.IsDeleted && i.UserId == userId);
         }
     }
 }

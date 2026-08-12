@@ -256,12 +256,14 @@ namespace Picterest.Services.Implementation
                     }
                 };
             }
-            catch(AmazonS3Exception)
+            catch(AmazonS3Exception ex)
             {
+                _logger.LogError(ex, "Error Uploading to S3 Storage");
                 return new ServiceResult
                 {
                     IsSuccess = false,
-                    Error = $"Error Uploading the file {FileName}"
+                    Error = $"Error Uploading the file {FileName}",
+                    StatusCode = 500
                 };
             }
             

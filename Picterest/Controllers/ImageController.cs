@@ -3,13 +3,14 @@ using Microsoft.AspNetCore.Mvc;
 using Picterest.DbModels;
 using Picterest.DTO.Images;
 using Picterest.Services.Interface;
+using System.Security.Claims;
 
 namespace Picterest.Controllers
 {
     [Authorize]
     [ApiController]
     [Route("api/[controller]")]
-    public class ImageController:ControllerBase
+    public class ImageController:BaseController
     {
         private readonly IImageService _imageService;
 
@@ -25,13 +26,16 @@ namespace Picterest.Controllers
             {
                 return BadRequest(ModelState);
             }
-            
-            var ImageUploadServiceResult = await _imageService.UploadImage(dto);
+
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? string.Empty;
+
+            var ImageUploadServiceResult = await _imageService.UploadImage(dto,userId);
 
             if(ImageUploadServiceResult == null)
             {
                 return new JsonResult(new
                 {
+                    Success = false,
                     Message = "Something Went Wrong",
                     StatusCode = 500
                 });
@@ -41,20 +45,22 @@ namespace Picterest.Controllers
             {
                 return new JsonResult(new
                 {
-                    Message = "Failed to Upload Image",
-                    StatusCode = 400
+                    Success = false,
+                    Message = ImageUploadServiceResult.Error,
+                    StatusCode = ImageUploadServiceResult.StatusCode
                 });
             }
             var ImageDetails = ImageUploadServiceResult.Result as ImageMetaData;
 
             return new JsonResult(new
             {
-                Message = "Image Uploaded Successfully",
-                StatusCode = 200,
+                Message = ImageUploadServiceResult.Message,
+                StatusCode = ImageUploadServiceResult.StatusCode,
                 ImageDetails
             });
         }
 
+        [AllowAnonymous]
         [HttpGet("get")]
         public async Task<IActionResult> GetImage([FromQuery] string id)
         {
@@ -67,12 +73,15 @@ namespace Picterest.Controllers
                 });
             }
 
+
+
             var ImageServiceResponse = await _imageService.GetImageFile(id);
 
             if(!ImageServiceResponse.IsSuccess)
             {
                 return new JsonResult(new
                 {
+                    Success = false,
                     Message = ImageServiceResponse.Error,
                     StatusCode = ImageServiceResponse.StatusCode
                 });
@@ -83,6 +92,7 @@ namespace Picterest.Controllers
             {
                 return new JsonResult(new
                 {
+                    Success = false,
                     Message = "Something Went Wrong",
                     StatusCode = 500
                 });
@@ -110,7 +120,7 @@ namespace Picterest.Controllers
                 });
             }
 
-            var ServiceResponse = await _imageService.GetImageMetaData(id);
+            var ServiceResponse = await _imageService.GetImageMetaData(id,UserId);
             if(ServiceResponse == null)
             {
                 return new JsonResult(new
@@ -155,7 +165,7 @@ namespace Picterest.Controllers
                 });
             }
 
-            var ImageDeleteResponse = await _imageService.SoftDelete(id);
+            var ImageDeleteResponse = await _imageService.SoftDelete(id,UserId);
 
             if(ImageDeleteResponse == null)
             {
@@ -188,7 +198,7 @@ namespace Picterest.Controllers
         [HttpGet("getAll")]
         public async Task<IActionResult> GetAllImages()
         {
-            var imagesResponse = await _imageService.GetAllImages();
+            var imagesResponse = await _imageService.GetAllImages(UserId);
             if(imagesResponse == null)
             {
                 return new JsonResult(new
@@ -224,7 +234,7 @@ namespace Picterest.Controllers
                 return BadRequest(ModelState);
             }
             
-            var UpdateSerivceResponse = await _imageService.UpdateImage(dto);
+            var UpdateSerivceResponse = await _imageService.UpdateImage(dto,UserId);
 
             if (!UpdateSerivceResponse.IsSuccess)
             {
@@ -248,7 +258,7 @@ namespace Picterest.Controllers
         [HttpGet("getAllRestorable")]
         public async Task<IActionResult> GetAllRestorableImages()
         {
-            var restorableImagesResponse = await _imageService.GetRestorableImagesList();
+            var restorableImagesResponse = await _imageService.GetRestorableImagesList(UserId);
             if(restorableImagesResponse == null)
             {
                 return new JsonResult(new
@@ -277,6 +287,7 @@ namespace Picterest.Controllers
                 RestorableImagesList
             });
         }
+        [AllowAnonymous]
         [HttpGet("getRestorableImage")]
         public async Task<IActionResult> GetRestorableImage([FromQuery] string id)
         {
@@ -340,7 +351,7 @@ namespace Picterest.Controllers
                     StatusCode = 400
                 });
             }
-            var restoreResponse = await _imageService.RestoreImages(imageIds);
+            var restoreResponse = await _imageService.RestoreImages(imageIds,UserId);
             if (restoreResponse == null)
             {
                 return new JsonResult(new

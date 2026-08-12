@@ -10,5 +10,6 @@
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
         public long GithubId { get; set; }
         public string GithubUserName { get; set; } = string.Empty;
+        public ICollection<Image> Images { get; set; } = new List<Image>();
     }
 }

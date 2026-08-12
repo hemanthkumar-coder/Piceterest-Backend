@@ -123,6 +123,14 @@ var app = builder.Build();
 Log.Information("Picterest API started successfully.");
 
 
+using (var scope = app.Services.CreateScope())
+{
+    var dbContext = scope.ServiceProvider
+        .GetRequiredService<ImageDbContext>();
+
+    dbContext.Database.Migrate();
+}
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
@@ -134,7 +142,7 @@ app.UseSerilogRequestLogging();
 
 app.UseHttpsRedirection();
 
-app.UseCors("AngularPolicy");
+app.UseCors("ReactPolicy");
 
 
 
