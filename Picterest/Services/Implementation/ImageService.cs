@@ -24,7 +24,7 @@ namespace Picterest.Services.Implementation
             _configuration = configuration;
         }
 
-        public async Task<ServiceResult> GetAllImages(string userId)
+        public async Task<ServiceResult> GetAllImages(string userId,PaginatedRequest request)
         {
             try
             {
@@ -39,7 +39,9 @@ namespace Picterest.Services.Implementation
                     };
                 }
 
-                var images = _unitOfWork.Images.GetAllImages(UID);
+                var totalImagesCount = await _unitOfWork.Images.GetAllImagesCount(UID);
+
+                var images = await _unitOfWork.Images.GetAllImages(UID,request);
                 if (images == null)
                 {
                     _logger.LogError("Images are null for Get All Images");
@@ -56,7 +58,14 @@ namespace Picterest.Services.Implementation
                     {
                         IsSuccess = true,
                         Message = "No Images Found",
-                        Result = new List<ImageMetaData>()
+                        Result = new PaginatedResponse<ImageMetaData>
+                        {
+                            PageNumber = request.PageNumber,
+                            PageSize = request.PageSize,
+                            TotalRecordCount = totalImagesCount,
+                            TotalPageCount = 0,
+                            Items = new List<ImageMetaData>()
+                        }
                     };
                 }
                 var ImagesList = images.Select(i => new ImageMetaData
@@ -69,11 +78,22 @@ namespace Picterest.Services.Implementation
                     ImageUrl = BuildImageApiUrl(i.Id)
                 }).ToList();
 
+                var pagintedResponse = new PaginatedResponse<ImageMetaData>
+                {
+                    Items = ImagesList,
+                    PageNumber = request.PageNumber,
+                    PageSize = request.PageSize,
+                    TotalRecordCount = totalImagesCount,
+                    TotalPageCount = (int)Math.Ceiling(
+    totalImagesCount / (double)request.PageSize
+)
+                };
+
                 return new ServiceResult
                 {
                     IsSuccess = true,
                     Message = "Successfully Retrieved All Images",
-                    Result = ImagesList
+                    Result = pagintedResponse
                 };
 
             }

@@ -2,6 +2,7 @@
 using Picterest.Context;
 using Picterest.DbModels;
 using Picterest.DTO.Images;
+using Picterest.HelperModels;
 using Picterest.Repositories.Interface;
 
 namespace Picterest.Repositories.Implementation
@@ -28,9 +29,40 @@ namespace Picterest.Repositories.Implementation
             return await _context.Images.Include(i=>i.Files).FirstOrDefaultAsync(i => i.Id == id && !i.IsDeleted);
         }
 
-        public IEnumerable<Image>? GetAllImages(Guid userId)
+        public async Task<List<Image>> GetAllImages(
+    Guid userId,
+    PaginatedRequest request)
         {
-            return _context.Images.Where(i => !i.IsDeleted && i.UserId == userId).Include(i => i.Files).AsNoTracking().ToList();
+            var query = _context.Images
+                .Where(i =>
+                    !i.IsDeleted &&
+                    i.UserId == userId)
+                .Include(i => i.Files)
+                .AsNoTracking();
+
+            if (!string.IsNullOrWhiteSpace(request.search))
+            {
+                var search = request.search.Trim();
+
+                query = query.Where(i =>
+                    EF.Functions.ILike(
+                        i.Name,
+                        $"%{search}%")
+                    ||
+                    (i.Description != null &&
+                     EF.Functions.ILike(
+                         i.Description,
+                         $"%{search}%")));
+            }
+
+            query = query
+                .OrderByDescending(i => i.CreatedAt)
+                .ThenByDescending(i => i.Id);
+
+            return await query
+                .Skip((request.PageNumber - 1) * request.PageSize)
+                .Take(request.PageSize)
+                .ToListAsync();
         }
 
         public IEnumerable<Image>? GetDeletedImagesDetails()
@@ -82,6 +114,12 @@ namespace Picterest.Repositories.Implementation
         public Task<Image?> GetImageFileByImageIdAndUserId(Guid id, Guid userId)
         {
             return _context.Images.Include(i => i.Files).FirstOrDefaultAsync(i => i.Id == id && !i.IsDeleted && i.UserId == userId);
+        }
+
+        public async Task<int> GetAllImagesCount(Guid userId)
+        {
+            var query = _context.Images.Where(i => !i.IsDeleted && i.UserId == userId);
+            return await query.CountAsync();
         }
     }
 }

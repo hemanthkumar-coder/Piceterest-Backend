@@ -203,7 +203,8 @@ namespace Picterest.Controllers
             {
                 Success = true,
                 Message = "Fetched User Details",
-                userDetails
+                StatusCode = 200,
+                Data = userDetails
             });
         }
 

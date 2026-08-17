@@ -9,7 +9,7 @@ namespace Picterest.Services.Interface
         Task<ServiceResult> GetImageFile(string id);
         Task<ServiceResult> GetImageMetaData(string id,string userId);
         Task<ServiceResult> SoftDelete(string id,string userId);
-        Task<ServiceResult> GetAllImages(string userId);
+        Task<ServiceResult> GetAllImages(string userId,PaginatedRequest request);
         Task<ServiceResult> UpdateImage(ImageUpdateDTO dto,string userId);
         Task<ServiceResult> GetDeletedImagesDetails();
         Task<ServiceResult> GetRestorableImagesList(string userId);

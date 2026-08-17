@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Picterest.DbModels;
 using Picterest.DTO.Images;
+using Picterest.HelperModels;
 using Picterest.Services.Interface;
 using System.Security.Claims;
 
@@ -56,7 +57,7 @@ namespace Picterest.Controllers
             {
                 Message = ImageUploadServiceResult.Message,
                 StatusCode = ImageUploadServiceResult.StatusCode,
-                ImageDetails
+                Data = ImageDetails
             });
         }
 
@@ -147,7 +148,7 @@ namespace Picterest.Controllers
             {
                 Success = true,
                 Message = "Image Details Fetched Successfully",
-                ImageDetails,
+                Data = ImageDetails,
                 StatusCode = 200
             });
             
@@ -195,10 +196,10 @@ namespace Picterest.Controllers
             });
 
         }
-        [HttpGet("getAll")]
-        public async Task<IActionResult> GetAllImages()
+        [HttpPost("getAll")]
+        public async Task<IActionResult> GetAllImages([FromBody] PaginatedRequest request)
         {
-            var imagesResponse = await _imageService.GetAllImages(UserId);
+            var imagesResponse = await _imageService.GetAllImages(UserId,request);
             if(imagesResponse == null)
             {
                 return new JsonResult(new
@@ -218,12 +219,12 @@ namespace Picterest.Controllers
                     StatusCode = imagesResponse.StatusCode
                 });
             }
-            var ImagesList = imagesResponse.Result as List<ImageMetaData>;
+            var ImagesList = imagesResponse.Result as PaginatedResponse<ImageMetaData>;
             return new JsonResult(new
             {
                 Success = true,
                 Message = imagesResponse.Message,
-                ImagesList
+                Data = ImagesList
             });
         }
         [HttpPost("update")]
@@ -251,7 +252,7 @@ namespace Picterest.Controllers
             {
                 Success = true,
                 Message = "Image Uploaded Success fully",
-                ImageDetails
+                Data = ImageDetails
             });
         }
 
@@ -284,7 +285,7 @@ namespace Picterest.Controllers
             {
                 Success = true,
                 Message = restorableImagesResponse.Message,
-                RestorableImagesList
+                Data = RestorableImagesList
             });
         }
         [AllowAnonymous]
